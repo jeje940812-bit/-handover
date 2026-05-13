@@ -604,6 +604,10 @@ function cleanConfluenceHtml(html) {
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
     // Confluence 특수 태그 정리
     .replace(/<ac:structured-macro[^>]*>[\s\S]*?<\/ac:structured-macro>/gi, '')
+    // li 안의 p 태그 제거 (글머리 기호 다음 줄바꿈 방지)
+    .replace(/<li>\s*<p>([\s\S]*?)<\/p>\s*<\/li>/gi, '<li>$1</li>')
+    .replace(/<li>\s*<p>/gi, '<li>')
+    .replace(/<\/p>\s*<\/li>/gi, '</li>')
     // table 스타일 추가
     .replace(/<table/gi, '<table class="kms-table"')
     // 나머지 정리
