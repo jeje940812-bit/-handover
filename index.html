@@ -474,7 +474,8 @@ function validate() {
 }
 
 // ── 인수인계서 생성 ──────────────────────────────
-let docText = '';
+let docText    = '';
+let kmsHtmlData = '';
 
 async function generate() {
   const fromName  = document.getElementById('from-name').value.trim();
@@ -513,8 +514,8 @@ async function generate() {
   setMsg('인수인계서 작성 중...');
   await sleep(400);
   const result = makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected, kmsContent, kmsHtml });
-  docText = result.doc;
-  const kmsHtmlData = result.kmsHtml;
+  docText     = result.doc;
+  kmsHtmlData = result.kmsHtml;
 
   document.getElementById('loading').classList.remove('on');
   let finalHtml = mdToHtml(docText);
