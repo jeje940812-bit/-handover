@@ -516,7 +516,7 @@ async function generate() {
   document.getElementById('result').classList.add('on');
   document.getElementById('btn-gen').disabled = false;
 
-  saveHist({ fromName, toName, typeLabel, dateStart, docText });
+  saveHist({ fromName, toName, typeLabel, dateStart, docText, kmsHtmlData });
   toast('인수인계서 생성 완료!', 'ok');
 }
 
@@ -722,8 +722,14 @@ function loadHist(id) {
   try { list = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch {}
   const item = list.find(h => h.id === id);
   if (!item) return;
-  docText = item.docText;
-  document.getElementById('result-body').innerHTML = mdToHtml(item.docText);
+  docText     = item.docText;
+  kmsHtmlData = item.kmsHtmlData || '';
+  let finalHtml = mdToHtml(item.docText);
+  if (kmsHtmlData) {
+    finalHtml = finalHtml.replace('<p style="margin:.15rem 0">__KMS_HTML__</p>', kmsHtmlData);
+    finalHtml = finalHtml.replace('__KMS_HTML__', kmsHtmlData);
+  }
+  document.getElementById('result-body').innerHTML = finalHtml;
   document.getElementById('result').classList.add('on');
   switchTab('gen', document.querySelectorAll('.tab')[0]);
   toast(item.fromName + ' → ' + item.toName + ' 불러오기 완료', 'ok');
