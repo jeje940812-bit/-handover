@@ -502,7 +502,7 @@ async function generate() {
   // KMS 내용 기반 템플릿 생성
   setMsg('인수인계서 작성 중...');
   await sleep(400);
-  docText = makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected });
+  docText = makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected, kmsContent });
 
   document.getElementById('loading').classList.remove('on');
   document.getElementById('result-body').innerHTML = mdToHtml(docText);
@@ -571,7 +571,7 @@ function htmlToText(html) {
 
 
 // ── 로컬 템플릿 ──────────────────────────────────
-function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected }) {
+function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected, kmsContent }) {
   const today   = new Date().toLocaleDateString('ko-KR');
   const hasSec  = selected.has('sec');
   const hasSafe = selected.has('safe');
@@ -697,6 +697,15 @@ function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, type
   doc += '| 정보보호 & 산업안전보건 업무 포털 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/406653051 |\n';
   doc += '| 정보보호 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407307427 |\n';
   doc += '| 산업안전보건 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407471178 |\n\n';
+  // KMS 실시간 내용 추가
+  if (kmsContent) {
+    doc += '\n\n---\n\n';
+    doc += '## 📋 KMS 실시간 업무 내용\n\n';
+    doc += '> KMS에서 실시간으로 가져온 최신 업무 내용입니다.\n\n';
+    doc += kmsContent;
+  }
+
+  doc += '\n\n---\n\n';
   doc += '*본 문서는 AI:ON-U 인수인계 자동화 시스템에 의해 생성되었습니다. (' + today + ')*';
 
   return doc;
