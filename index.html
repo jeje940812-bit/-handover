@@ -402,14 +402,25 @@
 <div id="panel-cfg" class="panel">
 <div class="wrap">
   <div class="card">
-    <div class="card-title">Confluence KMS 연동</div>
-    <div class="status-row">
-      <span class="pill pill-ok">● 서비스 계정 연결됨</span>
-      <span style="font-size:12px;color:var(--sub)">ktds-kms.atlassian.net</span>
+    <div class="card-title">Confluence KMS 연동 설정</div>
+    <p style="font-size:13px;color:var(--sub);margin-bottom:1rem;line-height:1.6">
+      설정값은 브라우저에만 저장되며 외부로 전송되지 않습니다.
+    </p>
+    <div class="field" style="margin-bottom:.75rem">
+      <label>서비스 계정 이메일</label>
+      <input type="text" id="cfg-email" placeholder="xxxxx@serviceaccount.atlassian.com"
+        style="font-family:monospace;font-size:13px"
+        oninput="saveCfg()">
     </div>
-    <div class="acc-email">ktdsinframanagedai-op5spnxgqu@serviceaccount.atlassian.com</div>
+    <div class="field" style="margin-bottom:1rem">
+      <label>API Token</label>
+      <input type="password" id="cfg-token" placeholder="ATSS..."
+        style="font-family:monospace;font-size:13px"
+        oninput="saveCfg()">
+    </div>
     <div class="btns">
       <button class="btn btn-primary" onclick="testConn()">🔌 연결 테스트</button>
+      <button class="btn btn-ghost" onclick="clearCfg()">🗑 초기화</button>
     </div>
   </div>
 
@@ -507,11 +518,19 @@ function setMsg(msg) {
 }
 
 // ── AI:ON-U API ──────────────────────────────────
-// ── Confluence 직접 호출 설정 ──
-const CONF_EMAIL  = 'ktdsinframanagedai-op5spnxgqu@serviceaccount.atlassian.com';
-const CONF_TOKEN  = 'ATSTT3xFfGF0ou99S8VYD1bb_s-OT08H0I5z4O3o1sC3PyV6EVMKw7ykStjlkmIf8oW563Rr1MCAD73RgNTSJUmmjzVmz89WHEIl5L96s44oYs4ONqq0C8bXY-A8J3I8Stlpks_H3yNx0DL-s26Gm2dko6bfXG3n2eZTPiaLRXGraYH5dgtfGEs=B7F85CE2';
+// ── Confluence 설정 (localStorage에서 읽기) ──
 const CONF_BASE   = 'https://api.atlassian.com/ex/confluence/bdea0a2b-a1f6-4364-812a-44b02e61e998/wiki/api/v2';
 const CONF_LEGACY = 'https://api.atlassian.com/ex/confluence/bdea0a2b-a1f6-4364-812a-44b02e61e998/wiki/rest/api';
+
+function getAuth() {
+  const email = localStorage.getItem('conf_email') || '';
+  const token = localStorage.getItem('conf_token') || '';
+  if (!email || !token) {
+    toast('설정 탭에서 이메일과 토큰을 먼저 입력해주세요', 'err');
+    return null;
+  }
+  return btoa(email + ':' + token);
+}
 
 const KMS_PAGES = {
   security: { id: '407307427', title: '정보보호 업무' },
@@ -519,7 +538,8 @@ const KMS_PAGES = {
 };
 
 async function fetchKmsPages(types) {
-  const auth    = btoa(CONF_EMAIL + ':' + CONF_TOKEN);
+  const auth = getAuth();
+  if (!auth) throw new Error('인증 정보 없음');
   const results = [];
   for (const type of types) {
     const page = KMS_PAGES[type];
@@ -732,7 +752,8 @@ async function saveKms() {
   const title    = '[인수인계] ' + fromName + ' → ' + toName + ' (' + today + ')';
   toast('KMS에 저장 중...', '');
   try {
-    const auth = btoa(CONF_EMAIL + ':' + CONF_TOKEN);
+    const auth = getAuth();
+    if (!auth) return;
     const res  = await fetch(CONF_LEGACY + '/content', {
       method : 'POST',
       headers: {
@@ -764,7 +785,8 @@ async function saveKms() {
 async function testConn() {
   toast('연결 테스트 중...', '');
   try {
-    const auth = btoa(CONF_EMAIL + ':' + CONF_TOKEN);
+    const auth = getAuth();
+    if (!auth) return;
     const res  = await fetch(CONF_BASE + '/pages/407307427', {
       headers: { 'Authorization': 'Basic ' + auth, 'Accept': 'application/json' }
     });
@@ -774,6 +796,25 @@ async function testConn() {
   } catch(e) {
     toast('연결 실패: ' + e.message, 'err');
   }
+}
+
+// ── 설정 저장/로드 ──────────────────────────────
+function saveCfg() {
+  localStorage.setItem('conf_email', document.getElementById('cfg-email').value.trim());
+  localStorage.setItem('conf_token', document.getElementById('cfg-token').value.trim());
+}
+function clearCfg() {
+  localStorage.removeItem('conf_email');
+  localStorage.removeItem('conf_token');
+  document.getElementById('cfg-email').value = '';
+  document.getElementById('cfg-token').value = '';
+  toast('설정이 초기화되었습니다', 'ok');
+}
+function loadCfg() {
+  const email = localStorage.getItem('conf_email') || '';
+  const token = localStorage.getItem('conf_token') || '';
+  document.getElementById('cfg-email').value = email;
+  document.getElementById('cfg-token').value = token;
 }
 
 // ── 이력 ─────────────────────────────────────────
@@ -838,6 +879,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('date-start').value = new Date().toISOString().split('T')[0];
   renderHist();
+  loadCfg();
 });
 </script>
 
