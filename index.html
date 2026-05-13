@@ -570,13 +570,14 @@ function htmlToText(html) {
 
 
 
-// ── 로컬 템플릿 ──────────────────────────────────
+// ── 템플릿 생성 ──────────────────────────────────
 function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected, kmsContent }) {
   const today   = new Date().toLocaleDateString('ko-KR');
   const hasSec  = selected.has('sec');
   const hasSafe = selected.has('safe');
   let doc = '';
 
+  // 1. 인수인계 개요
   doc += '## 1. 인수인계 개요\n\n';
   doc += '| 항목 | 내용 |\n|------|------|\n';
   doc += '| 작성일 | ' + today + ' |\n';
@@ -586,127 +587,48 @@ function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, type
   doc += '| 인계 사유 | ' + (reason || '-') + ' |\n';
   doc += '| 대상 업무 | ' + typeLabel + ' |\n\n---\n\n';
 
+  // 2. 업무 담당자 정보
   doc += '## 2. 업무 담당자 정보\n\n';
   doc += '| 구분 | 성명 | 부서 | 연락처 |\n|------|------|------|--------|\n';
   doc += '| 인계자 | ' + fromName + ' | ' + (dept || '-') + ' | (직접 기재) |\n';
   doc += '| 인수자 | ' + toName + ' | - | (직접 기재) |\n\n---\n\n';
 
-  if (hasSec) {
-    doc += '## 3. 정보보호 업무 목록\n\n';
-    doc += '| 업무 ID | 업무명 | 주기 |\n|---------|--------|------|\n';
-    doc += '| IS-001 | KT/KTC 협력사 정보보호 관리 및 응대 | 수시 |\n';
-    doc += '| IS-002 | KT/KTC 협력사 Roll-Off 프로세스 안내 및 업무종료 점검표 관리 | 수시 |\n';
-    doc += '| IS-003 | 분기별 Security Clean Day 시행 안내 및 확인 | 분기 1회 |\n';
-    doc += '| IS-004 | 협력사 ZTNA 신청 가이드 안내 | 수시 |\n';
-    doc += '| IS-005 | 협력사 FTC 파일 결재 승인 | 수시 |\n';
-    doc += '| IS-006 | 인수인계 담당자 변경 절차 | 인수인계 시 |\n\n---\n\n';
-
-    doc += '## 4. 정보보호 업무 상세 절차\n\n';
-    doc += '#### IS-001. KT/KTC 협력사 정보보호 관리 및 응대\n\n';
-    doc += '| 항목 | 내용 |\n|------|------|\n';
-    doc += '| 주기 | 수시 |\n| 관련 시스템 | IDMS: https://idms.kt.com |\n| 담당자 연락처 | 1588-3391 / idms@kt.com |\n\n';
-    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
-    doc += '| 1단계 | IDMS → 정보관리 → 담당 협력사 조회 / 정보보호서약서·재직증명서·계정신청서 등재 여부 확인 |\n';
-    doc += '| 2단계 | 협력사 보안 관련 요청 사항 검토 및 처리 (KTALK 종료, 아웃룩 보안정책, M365 전환, KT DLP 설치 안내 등) |\n';
-    doc += '| 3단계 | 처리 결과 확인/공유 (계정/권한, IP, 노트북 반입, 보안 SW 설치 등) |\n\n';
-
-    doc += '#### IS-002. Roll-Off 프로세스 안내 및 업무종료 점검표 관리\n\n';
-    doc += '| 항목 | 내용 |\n|------|------|\n';
-    doc += '| 주기 | 수시 (Roll-Off 발생 시) |\n';
-    doc += '| 주의사항 | Roll-Off 최소 D-14일 이전에 점검표 작성/제출 요청 필수. 미제출 시 보안정책 패널티 적용 |\n\n';
-    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
-    doc += '| 1단계 | 협력사 Roll-Off 발생 확인 (최소 D-14일 이전) |\n';
-    doc += '| 2단계 | 대상 협력사/직원에게 Roll-Off 프로세스 안내 |\n';
-    doc += '| 3단계 | 업무종료 점검표 수령/보관 (D-7일 전까지 제출 확인) |\n\n';
-
-    doc += '#### IS-003. Security Clean Day\n\n';
-    doc += '| 항목 | 내용 |\n|------|------|\n';
-    doc += '| 주기 | 분기 1회 |\n| 담당자 | 보안정책팀 김슬예나 책임 |\n\n';
-    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
-    doc += '| 1단계 | 분기별 Security Clean Day 일정 확인 |\n';
-    doc += '| 2단계 | KT/KTC MA 협력사 상주 직원 대상 시행 안내 공지 메일 발송 |\n';
-    doc += '| 3단계 | 시행 여부 확인 및 결과 자료 보관 / 취약 항목 조치 후 결과 전송 필수 |\n\n';
-
-    doc += '#### IS-004. 협력사 ZTNA 신청 가이드\n\n';
-    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
-    doc += '| 1단계 | 협력사 ZTNA 신청 요청 접수 |\n';
-    doc += '| 2단계 | ZTNA 신청 가이드 안내 자료 전달 (https://bpmplus.kt.co.kr) |\n';
-    doc += '| 3단계 | 신청 완료 여부 확인 |\n\n';
-
-    doc += '#### IS-005. 협력사 FTC 파일 결재 승인\n\n';
-    doc += '| 항목 | 내용 |\n|------|------|\n';
-    doc += '| 관련 시스템 | FTC: https://pcftc.ktvdi.co.kr:3000/ftc/ |\n';
-    doc += '| 담당자 연락처 | itovdiftc.ktcloud@kt.com / 070-5224-1926 |\n\n';
-    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
-    doc += '| 사전 | KT ITSM → VDI 발급신청(단기) → VDI 계정 생성 후 FTC 연동 |\n';
-    doc += '| 1단계 | FTC 접속 → 결재대기함 확인 |\n';
-    doc += '| 2단계 | 대상 파일 내용 검토 및 승인 처리 |\n\n---\n\n';
-
-    doc += '## 5. 정보보호 시스템 접근 정보\n\n';
-    doc += '| 시스템명 | URL | 비고 |\n|---------|-----|------|\n';
-    doc += '| IDMS 통합계정관리 | https://idms.kt.com | 협력사 계정/정보보호 관리 |\n';
-    doc += '| Roll-Off 프로세스 | http://security.ktds.co.kr/projects/onestop/wiki/보안웰컴패키지 | |\n';
-    doc += '| Security Clean Day | http://security.ktds.co.kr/projects/cleanday_2019/files | |\n';
-    doc += '| ZTNA 신청 | https://bpmplus.kt.co.kr | |\n';
-    doc += '| FTC 파일 승인 | https://pcftc.ktvdi.co.kr:3000/ftc/ | |\n';
-    doc += '| VDI 계정관리 | https://itovdi.ktvdi.co.kr/ | |\n';
-    doc += '| ITSM | http://itsm.ktds.co.kr/ | |\n\n---\n\n';
-  }
-
-  if (hasSafe) {
-    doc += '## ' + (hasSec ? '3-B' : '3') + '. 산업안전보건 업무 목록\n\n';
-    doc += '| 업무 ID | 업무명 | 주기 |\n|---------|--------|------|\n';
-    doc += '| SH-001 | 순회점검 일지 작성 및 등록 | 매주 |\n';
-    doc += '| SH-002 | ITO/MA 상면 합동안전보건점검 | 분기 1회 |\n';
-    doc += '| SH-003 | 분당본사타워 월 유료주차 안내 | 매월 |\n\n---\n\n';
-
-    doc += '## ' + (hasSec ? '4-B' : '4') + '. 산업안전보건 업무 상세 절차\n\n';
-    doc += '#### SH-001. 순회점검 일지 작성 및 등록\n\n';
-    doc += '| 항목 | 내용 |\n|------|------|\n';
-    doc += '| 주기 | 매주 |\n| 관련 시스템 | https://ito.kt.co.kr/ |\n';
-    doc += '| 점검 장소 | KT 분당사옥 2층 A존, 11층 A존 |\n| 담당자 | 사업시너지팀 윤정미 선임 |\n\n';
-    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
-    doc += '| 1단계 | 협력사 직원 상주 장소 방문 육안 점검 / 안전·보건 지적사항 발견 시 조치요구 |\n';
-    doc += '| 2단계 | https://ito.kt.co.kr/ → 산업안전보건관리 → 작업장 순회점검 화면 이동 |\n';
-    doc += '| 3단계 | 순회점검 결과 작성 (점검자·상면구분·점검일시·점검장소·특이사항·16개 항목) 후 등록 |\n\n';
-
-    doc += '#### SH-002. ITO/MA 상면 합동안전보건점검\n\n';
-    doc += '| 항목 | 내용 |\n|------|------|\n';
-    doc += '| 주기 | 분기 1회 |\n| 담당자 | 사업시너지팀 윤정미 선임 / 경영지원팀 고세인 책임 |\n\n';
-    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
-    doc += '| 1단계 | ITO/MA 상면 합동안전보건 점검일시 확인 |\n';
-    doc += '| 2단계 | KT 분당사옥 2층/11층 A존 방문 점검 |\n';
-    doc += '| 3단계 | 지적사항 후속 조치 및 점검 결과 공유 |\n\n';
-
-    doc += '#### SH-003. 분당본사타워 월 유료주차 안내\n\n';
-    doc += '| 항목 | 내용 |\n|------|------|\n';
-    doc += '| 주기 | 매월 |\n| 담당자 | 내부고객만족팀 한금수 |\n';
-    doc += '| 주의사항 | 기간 내 미신청·미결제 시 추가 주차 지원 불가 / 요금: 80,000원 (카드만 가능) |\n\n';
-    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
-    doc += '| 1단계 | IDMS 등록 협력사에게 매월 KT 분당사옥 유료주차 신청 안내문 전달 |\n';
-    doc += '| 2단계 | 협력사 신청 및 결제 여부 확인 (지하 1층 주차지원실) |\n\n---\n\n';
-
-    doc += '## ' + (hasSec ? '5-B' : '5') + '. 산업안전보건 시스템 접근 정보\n\n';
-    doc += '| 시스템명 | URL | 비고 |\n|---------|-----|------|\n';
-    doc += '| ITO 순회점검 등록 | https://ito.kt.co.kr/ | 작업장 순회점검 등록 |\n\n---\n\n';
-  }
-
-  doc += '## 6. 특이사항 및 주의사항\n\n(인계자가 직접 기재해주세요)\n\n---\n\n';
-  doc += '## 7. 참고 문서\n\n';
-  doc += '| 구분 | 링크 |\n|------|------|\n';
-  doc += '| 정보보호 & 산업안전보건 업무 포털 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/406653051 |\n';
-  doc += '| 정보보호 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407307427 |\n';
-  doc += '| 산업안전보건 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407471178 |\n\n';
-  // KMS 실시간 내용 추가
+  // 3. KMS 실시간 업무 내용 (API에서 가져온 최신 내용)
   if (kmsContent) {
-    doc += '\n\n---\n\n';
-    doc += '## 📋 KMS 실시간 업무 내용\n\n';
-    doc += '> KMS에서 실시간으로 가져온 최신 업무 내용입니다.\n\n';
+    doc += '## 3. 업무 내용 (KMS 최신 기준)\n\n';
     doc += kmsContent;
+    doc += '\n\n---\n\n';
+  } else {
+    // KMS 연동 실패 시 기본 템플릿
+    if (hasSec) {
+      doc += '## 3. 정보보호 업무 목록\n\n';
+      doc += '| 업무 ID | 업무명 | 주기 |\n|---------|--------|------|\n';
+      doc += '| IS-001 | KT/KTC 협력사 정보보호 관리 및 응대 | 수시 |\n';
+      doc += '| IS-002 | KT/KTC 협력사 Roll-Off 프로세스 안내 및 업무종료 점검표 관리 | 수시 |\n';
+      doc += '| IS-003 | 분기별 Security Clean Day 시행 안내 및 확인 | 분기 1회 |\n';
+      doc += '| IS-004 | 협력사 ZTNA 신청 가이드 안내 | 수시 |\n';
+      doc += '| IS-005 | 협력사 FTC 파일 결재 승인 | 수시 |\n';
+      doc += '| IS-006 | 인수인계 담당자 변경 절차 | 인수인계 시 |\n\n---\n\n';
+    }
+    if (hasSafe) {
+      doc += '## ' + (hasSec ? '4' : '3') + '. 산업안전보건 업무 목록\n\n';
+      doc += '| 업무 ID | 업무명 | 주기 |\n|---------|--------|------|\n';
+      doc += '| SH-001 | 순회점검 일지 작성 및 등록 | 매주 |\n';
+      doc += '| SH-002 | ITO/MA 상면 합동안전보건점검 | 분기 1회 |\n';
+      doc += '| SH-003 | 분당본사타워 월 유료주차 안내 | 매월 |\n\n---\n\n';
+    }
   }
 
-  doc += '\n\n---\n\n';
-  doc += '*본 문서는 AI:ON-U 인수인계 자동화 시스템에 의해 생성되었습니다. (' + today + ')*';
+  // 4. 특이사항
+  doc += '## 4. 특이사항 및 주의사항\n\n(인계자가 직접 기재해주세요)\n\n---\n\n';
+
+  // 5. 참고 문서
+  doc += '## 5. 참고 문서\n\n';
+  doc += '| 구분 | 링크 |\n|------|------|\n';
+  if (hasSec)  doc += '| 정보보호 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407307427 |\n';
+  if (hasSafe) doc += '| 산업안전보건 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407471178 |\n';
+  doc += '\n---\n\n';
+  doc += '*본 문서는 KT DS 업무 인수인계 자동화 시스템에 의해 생성되었습니다. (' + today + ')*';
 
   return doc;
 }
