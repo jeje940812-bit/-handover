@@ -622,6 +622,7 @@ function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, type
   doc += '\n\n---\n\n';
 
   doc += '*본 문서는 KT DS 업무 인수인계 자동화 시스템에 의해 생성되었습니다. (' + today + ')*';
+  doc += '\n\n*첨부 문서는 KMS에서 확인 가능합니다.*';
 
   return { doc, kmsHtml };
 }
@@ -759,5 +760,27 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
+
+<!-- AI:ON-U 챗봇 -->
+<script>
+  window.aionChatbotConfig = {
+    token: 'BhYhaz1NRR4rFodR',
+    isDev: true,
+    baseUrl: 'https://studio.abclab.ktds.com',
+    isOpen: false,
+    isStartButtonShow: false,
+    bgcolor: '#3D53FF',
+    iconSize: '100%',
+    totalIconSize: '3rem',
+    totalBorderRadius: '1.5rem',
+    bottom: '1rem',
+    right: '1rem',
+    chatBottom: '5rem',
+    chatRight: '1rem',
+    zoom: 1.0,
+    input: { userName: '' }
+  };
+</script>
+<script src="https://studio.abclab.ktds.com/embed.min.js" id="BhYhaz1NRR4rFodR" defer></script>
 </body>
 </html>
