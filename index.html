@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>업무 인수인계 자동화 | KT DS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+  :root {
+    --mint:      #00BFA5;
+    --mint-dark: #00897B;
+    --accent:    #3D53FF;
+    --bg:        #F4F5F9;
+    --surface:   #FFFFFF;
+    --border:    #E2E4EC;
+    --text:      #1A1D2E;
+    --sub:       #6B7280;
+    --success:   #059669;
+    --error:     #DC2626;
+    --radius:    12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 5rem;
+  }
+
+  /* 헤더 */
+  header {
+    background: var(--mint);
+    color: #fff;
+    height: 56px;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,191,165,0.3);
+  }
+  .logo {
+    background: rgba(255,255,255,0.25);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  header h1 { font-size: 15px; font-weight: 500; }
+
+  /* 탭 */
+  .tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    padding: 0 2rem;
+    position: sticky;
+    top: 56px;
+    z-index: 99;
+  }
+  .tab {
+    height: 48px;
+    padding: 0 1.25rem;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--sub);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .2s;
+  }
+  .tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+  /* 컨테이너 */
+  .wrap { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+
+  /* 패널 */
+  .panel { display: none; }
+  .panel.on { display: block; }
+
+  /* 카드 */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sub);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-title::before {
+    content: '';
+    width: 3px; height: 14px;
+    background: var(--mint);
+    border-radius: 2px;
+    display: block;
+  }
+
+  /* 폼 */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .field { display: flex; flex-direction: column; gap: .3rem; }
+  .field label { font-size: 12px; font-weight: 500; color: var(--sub); }
+  .field input, .field select {
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .55rem .75rem;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .field input:focus, .field select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(61,83,255,.1);
+    background: #fff;
+  }
+
+  /* 업무 유형 카드 */
+  .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .type-card {
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    cursor: pointer;
+    transition: all .2s;
+    background: var(--bg);
+    user-select: none;
+  }
+  .type-card:hover { border-color: var(--accent); }
+  .type-card.on {
+    border-color: var(--accent);
+    background: #eef0ff;
+    box-shadow: 0 0 0 3px rgba(61,83,255,.1);
+  }
+  .type-card.on .type-name { color: var(--accent); }
+  .type-icon { font-size: 24px; margin-bottom: .4rem; }
+  .type-name { font-size: 14px; font-weight: 600; }
+  .type-desc { font-size: 12px; color: var(--sub); margin-top: .2rem; line-height: 1.4; }
+
+  /* 버튼 */
+  .btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .65rem 1.4rem;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #2c42e0; box-shadow: 0 4px 12px rgba(61,83,255,.35); }
+  .btn-primary:disabled { background: #a0a7d1; cursor: not-allowed; box-shadow: none; }
+  .btn-ghost { background: none; color: var(--sub); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btns { display: flex; gap: .5rem; margin-top: 1rem; }
+
+  /* 로딩 */
+  .loading {
+    display: none;
+    background: #eef0ff;
+    border: 1px solid #c7cdff;
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    text-align: center;
+    margin: 1rem 0;
+  }
+  .loading.on { display: block; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #c7cdff;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin: 0 auto .75rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-msg { font-size: 14px; color: var(--accent); font-weight: 500; }
+
+  /* 결과 */
+  .result {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-top: 1rem;
+  }
+  .result.on { display: block; }
+  .result-bar {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: .75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .result-label { font-size: 12px; font-weight: 600; color: var(--sub); margin-right: auto; }
+  .result-body {
+    padding: 1.5rem 2rem;
+    font-size: 14px;
+    line-height: 1.8;
+    min-height: 300px;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .result-body h2 {
+    font-size: 15px; font-weight: 700;
+    color: #003087;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: .4rem;
+    margin: 1.5rem 0 .75rem;
+  }
+  .result-body h2:first-child { margin-top: 0; }
+  .result-body h4 { font-size: 13px; font-weight: 700; margin: 1rem 0 .4rem; }
+  .result-body table { width: 100%; border-collapse: collapse; margin: .5rem 0; font-size: 13px; }
+  .result-body th { background: var(--bg); border: 1px solid var(--border); padding: .45rem .7rem; font-weight: 600; text-align: left; }
+  .result-body td { border: 1px solid var(--border); padding: .45rem .7rem; }
+  .result-body tr:nth-child(even) td { background: #fafbfc; }
+  .result-body hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+
+  /* 이력 */
+  .hist-list { display: flex; flex-direction: column; gap: .6rem; }
+  .hist-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    display: flex; align-items: center; gap: 1rem;
+    cursor: pointer;
+    transition: box-shadow .2s;
+  }
+  .hist-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); border-color: var(--accent); }
+  .badge {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+  .b-sec  { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+  .b-safe { background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
+  .b-both { background: #FFF7ED; color: #92400E; border: 1px solid #FDE68A; }
+  .hist-info { flex: 1; }
+  .hist-name { font-size: 14px; font-weight: 500; }
+  .hist-meta { font-size: 12px; color: var(--sub); margin-top: 2px; }
+  .hist-date { font-size: 12px; color: var(--sub); }
+
+  /* 설정 */
+  .status-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+  .pill { display: inline-flex; align-items: center; gap: .3rem; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .pill-ok { background: #ECFDF5; color: var(--success); border: 1px solid #6EE7B7; }
+  .acc-email { font-size: 12px; color: var(--sub); font-family: monospace; background: var(--bg); padding: .4rem .75rem; border-radius: 6px; }
+
+  /* 토스트 */
+  .toast {
+    position: fixed; bottom: 5rem; right: 1.5rem;
+    background: #1A1D2E; color: #fff;
+    padding: .7rem 1.2rem; border-radius: 10px;
+    font-size: 13px; font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    z-index: 9999;
+    transform: translateY(80px); opacity: 0;
+    transition: all .3s cubic-bezier(.34,1.56,.64,1);
+  }
+  .toast.on { transform: translateY(0); opacity: 1; }
+  .toast.ok  { background: #064E3B; }
+  .toast.err { background: #7F1D1D; }
+
+  @media (max-width: 600px) {
+    .grid2, .type-grid { grid-template-columns: 1fr; }
+    .wrap { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<header>
+  <div class="logo">KT DS</div>
+  <h1>업무 인수인계 자동화 시스템</h1>
+</header>
+
+<!-- 탭 -->
+<div class="tabs">
+  <button class="tab on" onclick="switchTab('gen', this)">📝 인수인계서 생성</button>
+  <button class="tab" onclick="switchTab('hist', this)">📋 이력 조회</button>
+  <button class="tab" onclick="switchTab('cfg', this)">⚙️ 설정</button>
+</div>
+
+<!-- 생성 패널 -->
+<div id="panel-gen" class="panel on">
+<div class="wrap">
+
+  <div class="card">
+    <div class="card-title">인수인계 기본 정보</div>
+    <div class="grid2">
+      <div class="field">
+        <label>인계자 (나가는 담당자)</label>
+        <input id="from-name" type="text" placeholder="예) 홍길동" oninput="validate()">
+      </div>
+      <div class="field">
+        <label>인수자 (들어오는 담당자)</label>
+        <input id="to-name" type="text" placeholder="예) 김철수" oninput="validate()">
+      </div>
+      <div class="field">
+        <label>인계 시작일</label>
+        <input id="date-start" type="date" oninput="validate()">
+      </div>
+      <div class="field">
+        <label>인계 종료일</label>
+        <input id="date-end" type="date">
+      </div>
+      <div class="field">
+        <label>소속 부서</label>
+        <input id="dept" type="text" placeholder="예) IT인프라운영팀">
+      </div>
+      <div class="field">
+        <label>인계 사유</label>
+        <select id="reason">
+          <option value="">선택하세요</option>
+          <option>인사이동</option>
+          <option>퇴직</option>
+          <option>휴직</option>
+          <option>부서이동</option>
+          <option>기타</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">인수인계 업무 유형</div>
+    <div class="type-grid">
+      <div class="type-card" id="card-sec" onclick="toggleType('sec')">
+        <div class="type-icon">🔒</div>
+        <div class="type-name">정보보호 업무</div>
+        <div class="type-desc">협력사 FTC 승인, Security Clean DAY, 정보보호 감사 등</div>
+      </div>
+      <div class="type-card" id="card-safe" onclick="toggleType('safe')">
+        <div class="type-icon">🦺</div>
+        <div class="type-name">산업안전보건 업무</div>
+        <div class="type-desc">주차별 순회 점검, 안전보건 교육, 위험성 평가 등</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btns">
+    <button class="btn btn-primary" id="btn-gen" onclick="generate()" disabled>✨ AI 인수인계서 생성</button>
+    <button class="btn btn-ghost" onclick="reset()">↺ 초기화</button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-msg" id="loading-msg">잠시만 기다려주세요...</div>
+  </div>
+
+  <div class="result" id="result">
+    <div class="result-bar">
+      <span class="result-label">📄 생성된 인수인계서</span>
+      <button class="btn btn-ghost" onclick="copyDoc()" style="font-size:12px;padding:.4rem .9rem">📋 복사</button>
+      <button class="btn btn-ghost" onclick="window.print()" style="font-size:12px;padding:.4rem .9rem">🖨 인쇄</button>
+      <button class="btn btn-primary" onclick="saveKms()" style="font-size:12px;padding:.4rem .9rem">💾 KMS 저장</button>
+    </div>
+    <div class="result-body" id="result-body"></div>
+  </div>
+
+</div>
+</div>
+
+<!-- 이력 패널 -->
+<div id="panel-hist" class="panel">
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">생성 이력</div>
+    <div class="hist-list" id="hist-list">
+      <div style="text-align:center;padding:2rem;color:var(--sub);font-size:14px;">아직 생성된 인수인계서가 없습니다.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 설정 패널 -->
+<div id="panel-cfg" class="panel">
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">Confluence KMS 연동</div>
+    <div class="status-row">
+      <span class="pill pill-ok">● 서비스 계정 연결됨</span>
+      <span style="font-size:12px;color:var(--sub)">ktds-kms.atlassian.net</span>
+    </div>
+    <div class="acc-email">ktdsinframanagedai-op5spnxgqu@serviceaccount.atlassian.com</div>
+    <div class="btns">
+      <button class="btn btn-primary" onclick="testConn()">🔌 연결 테스트</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- 토스트 -->
+<div class="toast" id="toast"></div>
+
+
+
+<!-- 앱 로직 -->
+<script>
+// ── 탭 ──────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('on'));
+  document.getElementById('panel-' + name).classList.add('on');
+  btn.classList.add('on');
+}
+
+// ── 업무 유형 ────────────────────────────────────
+const selected = new Set();
+function toggleType(type) {
+  const card = document.getElementById('card-' + type);
+  if (selected.has(type)) {
+    selected.delete(type);
+    card.classList.remove('on');
+  } else {
+    selected.add(type);
+    card.classList.add('on');
+  }
+  validate();
+}
+
+// ── 유효성 ──────────────────────────────────────
+function validate() {
+  const ok = document.getElementById('from-name').value.trim()
+           && document.getElementById('to-name').value.trim()
+           && document.getElementById('date-start').value
+           && selected.size > 0;
+  document.getElementById('btn-gen').disabled = !ok;
+}
+
+// ── 인수인계서 생성 ──────────────────────────────
+let docText = '';
+
+async function generate() {
+  const fromName  = document.getElementById('from-name').value.trim();
+  const toName    = document.getElementById('to-name').value.trim();
+  const dept      = document.getElementById('dept').value.trim();
+  const dateStart = document.getElementById('date-start').value;
+  const dateEnd   = document.getElementById('date-end').value;
+  const reason    = document.getElementById('reason').value;
+  const types     = [...selected].map(t => t === 'sec' ? 'security' : 'safety');
+  const typeLabel = [...selected].map(t => t === 'sec' ? '정보보호 업무' : '산업안전보건 업무').join(', ');
+
+  document.getElementById('btn-gen').disabled = true;
+  document.getElementById('result').classList.remove('on');
+  document.getElementById('loading').classList.add('on');
+
+  setMsg('KMS에서 최신 업무 내용 읽는 중...');
+
+  // KMS 직접 조회 (서버 불필요)
+  let kmsContent = '';
+  try {
+    const pages = await fetchKmsPages(types);
+    const validPages = pages.filter(p => p.text);
+    if (validPages.length > 0) {
+      kmsContent = validPages.map(p => '[' + p.title + ']\n' + p.text).join('\n\n---\n\n');
+      toast('KMS 최신 내용 로딩 완료!', 'ok');
+    } else {
+      toast('KMS 내용이 비어있습니다 — 기본 템플릿으로 생성합니다', '');
+    }
+  } catch(e) {
+    toast('KMS 조회 실패 — 기본 템플릿으로 생성합니다', '');
+  }
+
+  // KMS 내용 기반 템플릿 생성
+  setMsg('인수인계서 작성 중...');
+  await sleep(400);
+  docText = makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected });
+
+  document.getElementById('loading').classList.remove('on');
+  document.getElementById('result-body').innerHTML = mdToHtml(docText);
+  document.getElementById('result').classList.add('on');
+  document.getElementById('btn-gen').disabled = false;
+
+  saveHist({ fromName, toName, typeLabel, dateStart, docText });
+  toast('인수인계서 생성 완료!', 'ok');
+}
+
+function setMsg(msg) {
+  document.getElementById('loading-msg').textContent = msg;
+}
+
+// ── AI:ON-U API ──────────────────────────────────
+// ── Confluence 직접 호출 설정 ──
+const CONF_EMAIL  = 'ktdsinframanagedai-op5spnxgqu@serviceaccount.atlassian.com';
+const CONF_TOKEN  = 'ATSTT3xFfGF0ou99S8VYD1bb_s-OT08H0I5z4O3o1sC3PyV6EVMKw7ykStjlkmIf8oW563Rr1MCAD73RgNTSJUmmjzVmz89WHEIl5L96s44oYs4ONqq0C8bXY-A8J3I8Stlpks_H3yNx0DL-s26Gm2dko6bfXG3n2eZTPiaLRXGraYH5dgtfGEs=B7F85CE2';
+const CONF_BASE   = 'https://api.atlassian.com/ex/confluence/bdea0a2b-a1f6-4364-812a-44b02e61e998/wiki/api/v2';
+const CONF_LEGACY = 'https://api.atlassian.com/ex/confluence/bdea0a2b-a1f6-4364-812a-44b02e61e998/wiki/rest/api';
+
+const KMS_PAGES = {
+  security: { id: '407307427', title: '정보보호 업무' },
+  safety:   { id: '407471178', title: '산업안전보건 업무' },
+};
+
+async function fetchKmsPages(types) {
+  const auth    = btoa(CONF_EMAIL + ':' + CONF_TOKEN);
+  const results = [];
+  for (const type of types) {
+    const page = KMS_PAGES[type];
+    if (!page) continue;
+    const res  = await fetch(CONF_BASE + '/pages/' + page.id + '?body-format=storage', {
+      headers: { 'Authorization': 'Basic ' + auth, 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Confluence API HTTP ' + res.status);
+    const data = await res.json();
+    const text = htmlToText(data.body?.storage?.value || '');
+    results.push({ type, title: page.title, text });
+  }
+  return results;
+}
+
+function htmlToText(html) {
+  return html
+    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/t[dh]>/gi, '\t')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"')
+    .replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+
+
+
+
+// ── 로컬 템플릿 ──────────────────────────────────
+function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected }) {
+  const today   = new Date().toLocaleDateString('ko-KR');
+  const hasSec  = selected.has('sec');
+  const hasSafe = selected.has('safe');
+  let doc = '';
+
+  doc += '## 1. 인수인계 개요\n\n';
+  doc += '| 항목 | 내용 |\n|------|------|\n';
+  doc += '| 작성일 | ' + today + ' |\n';
+  doc += '| 인계자 | ' + fromName + ' (' + (dept || '-') + ') |\n';
+  doc += '| 인수자 | ' + toName + ' |\n';
+  doc += '| 인계 기간 | ' + dateStart + ' ~ ' + (dateEnd || '미정') + ' |\n';
+  doc += '| 인계 사유 | ' + (reason || '-') + ' |\n';
+  doc += '| 대상 업무 | ' + typeLabel + ' |\n\n---\n\n';
+
+  doc += '## 2. 업무 담당자 정보\n\n';
+  doc += '| 구분 | 성명 | 부서 | 연락처 |\n|------|------|------|--------|\n';
+  doc += '| 인계자 | ' + fromName + ' | ' + (dept || '-') + ' | (직접 기재) |\n';
+  doc += '| 인수자 | ' + toName + ' | - | (직접 기재) |\n\n---\n\n';
+
+  if (hasSec) {
+    doc += '## 3. 정보보호 업무 목록\n\n';
+    doc += '| 업무 ID | 업무명 | 주기 |\n|---------|--------|------|\n';
+    doc += '| IS-001 | KT/KTC 협력사 정보보호 관리 및 응대 | 수시 |\n';
+    doc += '| IS-002 | KT/KTC 협력사 Roll-Off 프로세스 안내 및 업무종료 점검표 관리 | 수시 |\n';
+    doc += '| IS-003 | 분기별 Security Clean Day 시행 안내 및 확인 | 분기 1회 |\n';
+    doc += '| IS-004 | 협력사 ZTNA 신청 가이드 안내 | 수시 |\n';
+    doc += '| IS-005 | 협력사 FTC 파일 결재 승인 | 수시 |\n';
+    doc += '| IS-006 | 인수인계 담당자 변경 절차 | 인수인계 시 |\n\n---\n\n';
+
+    doc += '## 4. 정보보호 업무 상세 절차\n\n';
+    doc += '#### IS-001. KT/KTC 협력사 정보보호 관리 및 응대\n\n';
+    doc += '| 항목 | 내용 |\n|------|------|\n';
+    doc += '| 주기 | 수시 |\n| 관련 시스템 | IDMS: https://idms.kt.com |\n| 담당자 연락처 | 1588-3391 / idms@kt.com |\n\n';
+    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
+    doc += '| 1단계 | IDMS → 정보관리 → 담당 협력사 조회 / 정보보호서약서·재직증명서·계정신청서 등재 여부 확인 |\n';
+    doc += '| 2단계 | 협력사 보안 관련 요청 사항 검토 및 처리 (KTALK 종료, 아웃룩 보안정책, M365 전환, KT DLP 설치 안내 등) |\n';
+    doc += '| 3단계 | 처리 결과 확인/공유 (계정/권한, IP, 노트북 반입, 보안 SW 설치 등) |\n\n';
+
+    doc += '#### IS-002. Roll-Off 프로세스 안내 및 업무종료 점검표 관리\n\n';
+    doc += '| 항목 | 내용 |\n|------|------|\n';
+    doc += '| 주기 | 수시 (Roll-Off 발생 시) |\n';
+    doc += '| 주의사항 | Roll-Off 최소 D-14일 이전에 점검표 작성/제출 요청 필수. 미제출 시 보안정책 패널티 적용 |\n\n';
+    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
+    doc += '| 1단계 | 협력사 Roll-Off 발생 확인 (최소 D-14일 이전) |\n';
+    doc += '| 2단계 | 대상 협력사/직원에게 Roll-Off 프로세스 안내 |\n';
+    doc += '| 3단계 | 업무종료 점검표 수령/보관 (D-7일 전까지 제출 확인) |\n\n';
+
+    doc += '#### IS-003. Security Clean Day\n\n';
+    doc += '| 항목 | 내용 |\n|------|------|\n';
+    doc += '| 주기 | 분기 1회 |\n| 담당자 | 보안정책팀 김슬예나 책임 |\n\n';
+    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
+    doc += '| 1단계 | 분기별 Security Clean Day 일정 확인 |\n';
+    doc += '| 2단계 | KT/KTC MA 협력사 상주 직원 대상 시행 안내 공지 메일 발송 |\n';
+    doc += '| 3단계 | 시행 여부 확인 및 결과 자료 보관 / 취약 항목 조치 후 결과 전송 필수 |\n\n';
+
+    doc += '#### IS-004. 협력사 ZTNA 신청 가이드\n\n';
+    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
+    doc += '| 1단계 | 협력사 ZTNA 신청 요청 접수 |\n';
+    doc += '| 2단계 | ZTNA 신청 가이드 안내 자료 전달 (https://bpmplus.kt.co.kr) |\n';
+    doc += '| 3단계 | 신청 완료 여부 확인 |\n\n';
+
+    doc += '#### IS-005. 협력사 FTC 파일 결재 승인\n\n';
+    doc += '| 항목 | 내용 |\n|------|------|\n';
+    doc += '| 관련 시스템 | FTC: https://pcftc.ktvdi.co.kr:3000/ftc/ |\n';
+    doc += '| 담당자 연락처 | itovdiftc.ktcloud@kt.com / 070-5224-1926 |\n\n';
+    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
+    doc += '| 사전 | KT ITSM → VDI 발급신청(단기) → VDI 계정 생성 후 FTC 연동 |\n';
+    doc += '| 1단계 | FTC 접속 → 결재대기함 확인 |\n';
+    doc += '| 2단계 | 대상 파일 내용 검토 및 승인 처리 |\n\n---\n\n';
+
+    doc += '## 5. 정보보호 시스템 접근 정보\n\n';
+    doc += '| 시스템명 | URL | 비고 |\n|---------|-----|------|\n';
+    doc += '| IDMS 통합계정관리 | https://idms.kt.com | 협력사 계정/정보보호 관리 |\n';
+    doc += '| Roll-Off 프로세스 | http://security.ktds.co.kr/projects/onestop/wiki/보안웰컴패키지 | |\n';
+    doc += '| Security Clean Day | http://security.ktds.co.kr/projects/cleanday_2019/files | |\n';
+    doc += '| ZTNA 신청 | https://bpmplus.kt.co.kr | |\n';
+    doc += '| FTC 파일 승인 | https://pcftc.ktvdi.co.kr:3000/ftc/ | |\n';
+    doc += '| VDI 계정관리 | https://itovdi.ktvdi.co.kr/ | |\n';
+    doc += '| ITSM | http://itsm.ktds.co.kr/ | |\n\n---\n\n';
+  }
+
+  if (hasSafe) {
+    doc += '## ' + (hasSec ? '3-B' : '3') + '. 산업안전보건 업무 목록\n\n';
+    doc += '| 업무 ID | 업무명 | 주기 |\n|---------|--------|------|\n';
+    doc += '| SH-001 | 순회점검 일지 작성 및 등록 | 매주 |\n';
+    doc += '| SH-002 | ITO/MA 상면 합동안전보건점검 | 분기 1회 |\n';
+    doc += '| SH-003 | 분당본사타워 월 유료주차 안내 | 매월 |\n\n---\n\n';
+
+    doc += '## ' + (hasSec ? '4-B' : '4') + '. 산업안전보건 업무 상세 절차\n\n';
+    doc += '#### SH-001. 순회점검 일지 작성 및 등록\n\n';
+    doc += '| 항목 | 내용 |\n|------|------|\n';
+    doc += '| 주기 | 매주 |\n| 관련 시스템 | https://ito.kt.co.kr/ |\n';
+    doc += '| 점검 장소 | KT 분당사옥 2층 A존, 11층 A존 |\n| 담당자 | 사업시너지팀 윤정미 선임 |\n\n';
+    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
+    doc += '| 1단계 | 협력사 직원 상주 장소 방문 육안 점검 / 안전·보건 지적사항 발견 시 조치요구 |\n';
+    doc += '| 2단계 | https://ito.kt.co.kr/ → 산업안전보건관리 → 작업장 순회점검 화면 이동 |\n';
+    doc += '| 3단계 | 순회점검 결과 작성 (점검자·상면구분·점검일시·점검장소·특이사항·16개 항목) 후 등록 |\n\n';
+
+    doc += '#### SH-002. ITO/MA 상면 합동안전보건점검\n\n';
+    doc += '| 항목 | 내용 |\n|------|------|\n';
+    doc += '| 주기 | 분기 1회 |\n| 담당자 | 사업시너지팀 윤정미 선임 / 경영지원팀 고세인 책임 |\n\n';
+    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
+    doc += '| 1단계 | ITO/MA 상면 합동안전보건 점검일시 확인 |\n';
+    doc += '| 2단계 | KT 분당사옥 2층/11층 A존 방문 점검 |\n';
+    doc += '| 3단계 | 지적사항 후속 조치 및 점검 결과 공유 |\n\n';
+
+    doc += '#### SH-003. 분당본사타워 월 유료주차 안내\n\n';
+    doc += '| 항목 | 내용 |\n|------|------|\n';
+    doc += '| 주기 | 매월 |\n| 담당자 | 내부고객만족팀 한금수 |\n';
+    doc += '| 주의사항 | 기간 내 미신청·미결제 시 추가 주차 지원 불가 / 요금: 80,000원 (카드만 가능) |\n\n';
+    doc += '| 단계 | 처리 내용 |\n|------|----------|\n';
+    doc += '| 1단계 | IDMS 등록 협력사에게 매월 KT 분당사옥 유료주차 신청 안내문 전달 |\n';
+    doc += '| 2단계 | 협력사 신청 및 결제 여부 확인 (지하 1층 주차지원실) |\n\n---\n\n';
+
+    doc += '## ' + (hasSec ? '5-B' : '5') + '. 산업안전보건 시스템 접근 정보\n\n';
+    doc += '| 시스템명 | URL | 비고 |\n|---------|-----|------|\n';
+    doc += '| ITO 순회점검 등록 | https://ito.kt.co.kr/ | 작업장 순회점검 등록 |\n\n---\n\n';
+  }
+
+  doc += '## 6. 특이사항 및 주의사항\n\n(인계자가 직접 기재해주세요)\n\n---\n\n';
+  doc += '## 7. 참고 문서\n\n';
+  doc += '| 구분 | 링크 |\n|------|------|\n';
+  doc += '| 정보보호 & 산업안전보건 업무 포털 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/406653051 |\n';
+  doc += '| 정보보호 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407307427 |\n';
+  doc += '| 산업안전보건 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407471178 |\n\n';
+  doc += '*본 문서는 AI:ON-U 인수인계 자동화 시스템에 의해 생성되었습니다. (' + today + ')*';
+
+  return doc;
+}
+
+// ── 마크다운 → HTML ──────────────────────────────
+function mdToHtml(md) {
+  if (!md) return '';
+  const lines = md.split('\n');
+  let html = '', inTable = false, tableHtml = '', firstRow = true;
+
+  for (const line of lines) {
+    if (/^\|[-| :]+\|$/.test(line.trim())) { firstRow = false; continue; }
+
+    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      if (!inTable) { inTable = true; firstRow = true; tableHtml = '<table>'; }
+      const cells = line.trim().slice(1, -1).split('|').map(c => c.trim());
+      if (firstRow) {
+        tableHtml += '<tr>' + cells.map(c => '<th>' + c + '</th>').join('') + '</tr>';
+        firstRow = false;
+      } else {
+        tableHtml += '<tr>' + cells.map(c => '<td>' + c + '</td>').join('') + '</tr>';
+      }
+      continue;
+    }
+
+    if (inTable) { html += tableHtml + '</table>'; inTable = false; tableHtml = ''; firstRow = true; }
+
+    if (/^#### /.test(line))     html += '<h4>' + line.replace(/^#### /, '') + '</h4>';
+    else if (/^### /.test(line)) html += '<h3>' + line.replace(/^### /, '') + '</h3>';
+    else if (/^## /.test(line))  html += '<h2>' + line.replace(/^## /, '') + '</h2>';
+    else if (/^---$/.test(line.trim())) html += '<hr>';
+    else if (line.trim() === '') html += '<br>';
+    else html += '<p style="margin:.15rem 0">' + line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') + '</p>';
+  }
+
+  if (inTable) html += tableHtml + '</table>';
+  return html;
+}
+
+// ── 복사 / KMS 저장 ──────────────────────────────
+function copyDoc() {
+  navigator.clipboard.writeText(docText)
+    .then(() => toast('클립보드에 복사됐습니다', 'ok'))
+    .catch(() => toast('복사 실패', 'err'));
+}
+
+async function saveKms() {
+  if (!docText) { toast('먼저 인수인계서를 생성해주세요', 'err'); return; }
+  const fromName = document.getElementById('from-name').value.trim();
+  const toName   = document.getElementById('to-name').value.trim();
+  const today    = new Date().toLocaleDateString('ko-KR');
+  const title    = '[인수인계] ' + fromName + ' → ' + toName + ' (' + today + ')';
+  toast('KMS에 저장 중...', '');
+  try {
+    const auth = btoa(CONF_EMAIL + ':' + CONF_TOKEN);
+    const res  = await fetch(CONF_LEGACY + '/content', {
+      method : 'POST',
+      headers: {
+        'Authorization': 'Basic ' + auth,
+        'Content-Type' : 'application/json',
+        'Accept'       : 'application/json',
+      },
+      body: JSON.stringify({
+        type    : 'page',
+        title,
+        ancestors: [{ id: '406653051' }],
+        body    : {
+          storage: {
+            value          : docText.replace(/\n/g, '<br/>'),
+            representation : 'storage',
+          }
+        }
+      }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    toast('KMS 저장 완료! — ' + title, 'ok');
+  } catch(e) {
+    toast('KMS 저장 실패: ' + e.message, 'err');
+  }
+}
+
+// ── 연결 테스트 ──────────────────────────────────
+async function testConn() {
+  toast('연결 테스트 중...', '');
+  try {
+    const auth = btoa(CONF_EMAIL + ':' + CONF_TOKEN);
+    const res  = await fetch(CONF_BASE + '/pages/407307427', {
+      headers: { 'Authorization': 'Basic ' + auth, 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    toast('연결 성공! — ' + data.title, 'ok');
+  } catch(e) {
+    toast('연결 실패: ' + e.message, 'err');
+  }
+}
+
+// ── 이력 ─────────────────────────────────────────
+const HIST_KEY = 'handover_hist_v1';
+function saveHist(item) {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch {}
+  list.unshift({ ...item, id: Date.now(), at: new Date().toLocaleString('ko-KR') });
+  localStorage.setItem(HIST_KEY, JSON.stringify(list.slice(0, 20)));
+  renderHist();
+}
+function renderHist() {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch {}
+  const el = document.getElementById('hist-list');
+  if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--sub);font-size:14px;">아직 생성된 인수인계서가 없습니다.</div>'; return; }
+  el.innerHTML = list.map(h => {
+    const bc = h.typeLabel.includes('정보보호') && h.typeLabel.includes('산업안전보건') ? 'b-both'
+             : h.typeLabel.includes('정보보호') ? 'b-sec' : 'b-safe';
+    return '<div class="hist-item" onclick="loadHist(' + h.id + ')">'
+      + '<span class="badge ' + bc + '">' + h.typeLabel + '</span>'
+      + '<div class="hist-info"><div class="hist-name">' + h.fromName + ' → ' + h.toName + '</div>'
+      + '<div class="hist-meta">인계 시작: ' + h.dateStart + '</div></div>'
+      + '<div class="hist-date">' + h.at + '</div></div>';
+  }).join('');
+}
+function loadHist(id) {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch {}
+  const item = list.find(h => h.id === id);
+  if (!item) return;
+  docText = item.docText;
+  document.getElementById('result-body').innerHTML = mdToHtml(item.docText);
+  document.getElementById('result').classList.add('on');
+  switchTab('gen', document.querySelectorAll('.tab')[0]);
+  toast(item.fromName + ' → ' + item.toName + ' 불러오기 완료', 'ok');
+}
+
+// ── 초기화 / 유틸 ────────────────────────────────
+function reset() {
+  ['from-name','to-name','dept','date-start','date-end'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('reason').value = '';
+  selected.clear();
+  document.getElementById('card-sec').classList.remove('on');
+  document.getElementById('card-safe').classList.remove('on');
+  document.getElementById('result').classList.remove('on');
+  document.getElementById('loading').classList.remove('on');
+  document.getElementById('btn-gen').disabled = true;
+}
+
+let toastTimer;
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = type === 'ok' ? '✅ ' + msg : type === 'err' ? '❌ ' + msg : '⏳ ' + msg;
+  el.className = 'toast on' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('on'), 3500);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('date-start').value = new Date().toISOString().split('T')[0];
+  renderHist();
+});
+</script>
+
+
+</body>
+</html>
