@@ -327,7 +327,7 @@
 <div class="tabs">
   <button class="tab on" onclick="switchTab('gen', this)">📝 인수인계서 생성</button>
   <button class="tab" onclick="switchTab('hist', this)">📋 이력 조회</button>
-  <button class="tab" onclick="switchTab('cfg', this)">⚙️ 설정</button>
+
 </div>
 
 <!-- 생성 패널 -->
@@ -418,35 +418,6 @@
       <div style="text-align:center;padding:2rem;color:var(--sub);font-size:14px;">아직 생성된 인수인계서가 없습니다.</div>
     </div>
   </div>
-</div>
-</div>
-
-<!-- 설정 패널 -->
-<div id="panel-cfg" class="panel">
-<div class="wrap">
-  <div class="card">
-    <div class="card-title">Confluence KMS 연동 설정</div>
-    <p style="font-size:13px;color:var(--sub);margin-bottom:1rem;line-height:1.6">
-      설정값은 브라우저에만 저장되며 외부로 전송되지 않습니다.
-    </p>
-    <div class="field" style="margin-bottom:.75rem">
-      <label>서비스 계정 이메일</label>
-      <input type="text" id="cfg-email" placeholder="xxxxx@serviceaccount.atlassian.com"
-        style="font-family:monospace;font-size:13px"
-        oninput="saveCfg()">
-    </div>
-    <div class="field" style="margin-bottom:1rem">
-      <label>API Token</label>
-      <input type="password" id="cfg-token" placeholder="ATSS..."
-        style="font-family:monospace;font-size:13px"
-        oninput="saveCfg()">
-    </div>
-    <div class="btns">
-      <button class="btn btn-primary" onclick="testConn()">🔌 연결 테스트</button>
-      <button class="btn btn-ghost" onclick="clearCfg()">🗑 초기화</button>
-    </div>
-  </div>
-
 </div>
 </div>
 
@@ -555,14 +526,12 @@ function setMsg(msg) {
 const CONF_BASE   = 'https://api.atlassian.com/ex/confluence/bdea0a2b-a1f6-4364-812a-44b02e61e998/wiki/api/v2';
 const CONF_LEGACY = 'https://api.atlassian.com/ex/confluence/bdea0a2b-a1f6-4364-812a-44b02e61e998/wiki/rest/api';
 
+// ── 서비스 계정 (하드코딩) ──
+const _CE = 'ktdsinframanagedai-op5spnxgqu@serviceaccount.atlassian.com';
+const _CT = 'ATSTT3xFfGF0ou99S8VYD1bb_s-OT08H0I5z4O3o1sC3PyV6EVMKw7ykStjlkmIf8oW563Rr1MCAD73RgNTSJUmmjzVmz89WHEIl5L96s44oYs4ONqq0C8bXY-A8J3I8Stlpks_H3yNx0DL-s26Gm2dko6bfXG3n2eZTPiaLRXGraYH5dgtfGEs=B7F85CE2';
+
 function getAuth() {
-  const email = localStorage.getItem('conf_email') || '';
-  const token = localStorage.getItem('conf_token') || '';
-  if (!email || !token) {
-    toast('설정 탭에서 이메일과 토큰을 먼저 입력해주세요', 'err');
-    return null;
-  }
-  return btoa(email + ':' + token);
+  return btoa(_CE + ':' + _CT);
 }
 
 const KMS_PAGES = {
@@ -704,41 +673,9 @@ function savePdf() {
   setTimeout(() => window.print(), 500);
 }
 
-// ── 연결 테스트 ──────────────────────────────────
-async function testConn() {
-  toast('연결 테스트 중...', '');
-  try {
-    const auth = getAuth();
-    if (!auth) return;
-    const res  = await fetch(CONF_BASE + '/pages/407307427', {
-      headers: { 'Authorization': 'Basic ' + auth, 'Accept': 'application/json' }
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    toast('연결 성공! — ' + data.title, 'ok');
-  } catch(e) {
-    toast('연결 실패: ' + e.message, 'err');
-  }
-}
 
-// ── 설정 저장/로드 ──────────────────────────────
-function saveCfg() {
-  localStorage.setItem('conf_email', document.getElementById('cfg-email').value.trim());
-  localStorage.setItem('conf_token', document.getElementById('cfg-token').value.trim());
-}
-function clearCfg() {
-  localStorage.removeItem('conf_email');
-  localStorage.removeItem('conf_token');
-  document.getElementById('cfg-email').value = '';
-  document.getElementById('cfg-token').value = '';
-  toast('설정이 초기화되었습니다', 'ok');
-}
-function loadCfg() {
-  const email = localStorage.getItem('conf_email') || '';
-  const token = localStorage.getItem('conf_token') || '';
-  document.getElementById('cfg-email').value = email;
-  document.getElementById('cfg-token').value = token;
-}
+
+
 
 // ── 이력 ─────────────────────────────────────────
 const HIST_KEY = 'handover_hist_v1';
@@ -802,7 +739,6 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('date-start').value = new Date().toISOString().split('T')[0];
   renderHist();
-  loadCfg();
 });
 </script>
 
