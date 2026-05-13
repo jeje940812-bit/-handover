@@ -290,8 +290,10 @@
   .kms-table th { background: var(--bg); border: 1px solid var(--border); padding: .45rem .7rem; font-weight: 600; text-align: left; }
   .kms-table td { border: 1px solid var(--border); padding: .45rem .7rem; vertical-align: top; }
   .kms-table tr:nth-child(even) td { background: #fafbfc; }
-  .kms-table td ul, .kms-table td ol { padding-left: 1.2rem; margin: 0; list-style-position: inside; }
-  .kms-table td li { margin: .15rem 0; }
+  .kms-table td ul, .kms-table td ol { padding-left: 1.2rem; margin: 0; list-style-position: outside; }
+  .kms-table td li { margin: .15rem 0; display: list-item; }
+  .kms-table td li > p { display: inline; margin: 0; }
+  .kms-table td li > span { display: inline; }
   .kms-table td p { margin: .15rem 0; }
   .result-body blockquote { background: #f8f9ff; border-left: 3px solid var(--accent); padding: .75rem 1rem; margin: .5rem 0; font-size: 13px; color: var(--sub); }
   .result-body h3 { font-size: 14px; font-weight: 700; color: var(--accent); margin: 1rem 0 .5rem; }
