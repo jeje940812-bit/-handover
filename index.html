@@ -285,6 +285,14 @@
   .toast.ok  { background: #064E3B; }
   .toast.err { background: #7F1D1D; }
 
+  /* KMS 표 스타일 */
+  .kms-table { width: 100%; border-collapse: collapse; margin: .5rem 0; font-size: 13px; }
+  .kms-table th { background: var(--bg); border: 1px solid var(--border); padding: .45rem .7rem; font-weight: 600; text-align: left; }
+  .kms-table td { border: 1px solid var(--border); padding: .45rem .7rem; vertical-align: top; }
+  .kms-table tr:nth-child(even) td { background: #fafbfc; }
+  .result-body blockquote { background: #f8f9ff; border-left: 3px solid var(--accent); padding: .75rem 1rem; margin: .5rem 0; font-size: 13px; color: var(--sub); }
+  .result-body h3 { font-size: 14px; font-weight: 700; color: var(--accent); margin: 1rem 0 .5rem; }
+
   @media (max-width: 600px) {
     .grid2, .type-grid { grid-template-columns: 1fr; }
     .wrap { padding: 1rem; }
@@ -486,14 +494,16 @@ async function generate() {
 
   // KMS 직접 조회 (서버 불필요)
   let kmsContent = '';
+  let kmsHtml    = '';
   try {
     const pages = await fetchKmsPages(types);
     const validPages = pages.filter(p => p.text);
     if (validPages.length > 0) {
       kmsContent = validPages.map(p => '[' + p.title + ']\n' + p.text).join('\n\n---\n\n');
+      kmsHtml    = validPages.map(p => '<h3>' + p.title + '</h3>' + p.html).join('<hr>');
       toast('KMS 최신 내용 로딩 완료!', 'ok');
     } else {
-      toast('KMS 내용이 비어있습니다 — 기본 템플릿으로 생성합니다', '');
+      toast('KMS 내용이 비어있습니다', '');
     }
   } catch(e) {
     toast('KMS 조회 실패 — 기본 템플릿으로 생성합니다', '');
@@ -502,10 +512,17 @@ async function generate() {
   // KMS 내용 기반 템플릿 생성
   setMsg('인수인계서 작성 중...');
   await sleep(400);
-  docText = makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected, kmsContent });
+  const result = makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected, kmsContent, kmsHtml });
+  docText = result.doc;
+  const kmsHtmlData = result.kmsHtml;
 
   document.getElementById('loading').classList.remove('on');
-  document.getElementById('result-body').innerHTML = mdToHtml(docText);
+  let finalHtml = mdToHtml(docText);
+  if (kmsHtmlData) {
+    finalHtml = finalHtml.replace('<p style="margin:.15rem 0">__KMS_HTML__</p>', kmsHtmlData);
+    finalHtml = finalHtml.replace('__KMS_HTML__', kmsHtmlData);
+  }
+  document.getElementById('result-body').innerHTML = finalHtml;
   document.getElementById('result').classList.add('on');
   document.getElementById('btn-gen').disabled = false;
 
@@ -549,10 +566,32 @@ async function fetchKmsPages(types) {
     });
     if (!res.ok) throw new Error('Confluence API HTTP ' + res.status);
     const data = await res.json();
-    const text = htmlToText(data.body?.storage?.value || '');
-    results.push({ type, title: page.title, text });
+    const rawHtml = data.body?.storage?.value || '';
+    const text    = htmlToText(rawHtml);
+    // Confluence Storage HTML → 브라우저 렌더링용 HTML로 변환
+    const cleanHtml = cleanConfluenceHtml(rawHtml);
+    results.push({ type, title: page.title, text, html: cleanHtml });
   }
   return results;
+}
+
+// Confluence Storage Format HTML 정리
+function cleanConfluenceHtml(html) {
+  return html
+    // Confluence 매크로 제거
+    .replace(/<ac:[^>]+>[\s\S]*?<\/ac:[^>]+>/gi, '')
+    .replace(/<ac:[^>]+\/>/gi, '')
+    .replace(/<ri:[^>]+\/>/gi, '')
+    // Confluence 링크 태그 처리
+    .replace(/<ac:link[^>]*>([\s\S]*?)<\/ac:link>/gi, '$1')
+    // 스타일 태그 제거
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    // Confluence 특수 태그 정리
+    .replace(/<ac:structured-macro[^>]*>[\s\S]*?<\/ac:structured-macro>/gi, '')
+    // table 스타일 추가
+    .replace(/<table/gi, '<table class="kms-table"')
+    // 나머지 정리
+    .trim();
 }
 
 function htmlToText(html) {
@@ -570,76 +609,11 @@ function htmlToText(html) {
 
 
 
-// ── KMS 데이터 파싱 ──────────────────────────────
-function parseKmsData(kmsText) {
-  if (!kmsText) return { tasks: [], details: [], history: [], notes: [] };
-
-  const lines  = kmsText.split('\n');
-  const tasks  = [];   // 업무 목록
-  const details = [];  // 업무 상세
-  const history = [];  // 담당자 히스토리
-  const notes  = [];   // 특이사항
-
-  let section = '';
-  let currentTask = null;
-  let currentTable = [];
-  let inTable = false;
-
-  for (const line of lines) {
-    const t = line.trim();
-    if (!t) continue;
-
-    // 섹션 감지
-    if (t.includes('담당자 히스토리')) { section = 'history'; continue; }
-    if (t.includes('업무 목록'))       { section = 'tasks';   continue; }
-    if (t.includes('업무 상세'))       { section = 'details'; continue; }
-    if (t.includes('특이사항'))        { section = 'notes';   continue; }
-    if (t.includes('업무종료 점검표') || t.includes('참고 문서')) { section = ''; continue; }
-
-    // 테이블 행 파싱
-    if (t.startsWith('|') && t.endsWith('|')) {
-      const cells = t.slice(1, -1).split('|').map(c => c.trim());
-      if (cells.some(c => /^[-:]+$/.test(c))) continue; // 구분선 스킵
-
-      if (section === 'history') {
-        if (!cells[0].includes('순번') && cells.length >= 4) {
-          history.push({ num: cells[0], name: cells[1], startDate: cells[2], endDate: cells[3], note: cells[4] || '' });
-        }
-      } else if (section === 'tasks') {
-        if (!cells[0].includes('업무 ID') && cells.length >= 3) {
-          tasks.push({ id: cells[0], name: cells[1], type: cells[2], period: cells[3] || '' });
-        }
-      } else if (section === 'notes') {
-        if (!cells[0].includes('날짜') && cells.length >= 3) {
-          notes.push({ date: cells[0], taskId: cells[1], content: cells[2], author: cells[3] || '' });
-        }
-      }
-    }
-
-    // 업무 상세 헤딩 감지 (IS-xxx, SH-xxx)
-    if (section === 'details' && /^[A-Z]{2}-\d{3}/.test(t.replace(/^#+\s*/, ''))) {
-      if (currentTask) details.push(currentTask);
-      currentTask = { id: t.replace(/^#+\s*/, '').split('.')[0].trim(), title: t.replace(/^#+\s*/, ''), rows: [] };
-    } else if (section === 'details' && currentTask && t.startsWith('|') && t.endsWith('|')) {
-      const cells = t.slice(1, -1).split('|').map(c => c.trim());
-      if (!cells.some(c => /^[-:]+$/.test(c))) {
-        currentTask.rows.push(cells);
-      }
-    }
-  }
-  if (currentTask) details.push(currentTask);
-
-  return { tasks, details, history, notes };
-}
-
 // ── 템플릿 생성 ──────────────────────────────────
-function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected, kmsContent }) {
-  const today   = new Date().toLocaleDateString('ko-KR');
+function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected, kmsContent, kmsHtml }) {
+  const today  = new Date().toLocaleDateString('ko-KR');
   const hasSec  = selected.has('sec');
   const hasSafe = selected.has('safe');
-
-  // KMS 데이터 파싱
-  const kms = parseKmsData(kmsContent);
 
   let doc = '';
 
@@ -653,77 +627,20 @@ function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, type
   doc += '| 인계 사유 | ' + (reason || '-') + ' |\n';
   doc += '| 대상 업무 | ' + typeLabel + ' |\n\n---\n\n';
 
-  // 2. 담당자 히스토리 (KMS에서 실시간)
-  doc += '## 2. 담당자 히스토리\n\n';
-  if (kms.history.length > 0) {
-    doc += '| 순번 | 담당자 | 인수일 | 인계일 | 비고 |\n|------|--------|--------|--------|------|\n';
-    kms.history.forEach(h => {
-      doc += '| ' + h.num + ' | ' + h.name + ' | ' + h.startDate + ' | ' + h.endDate + ' | ' + h.note + ' |\n';
-    });
-    // 새 인수자 행 추가
-    doc += '| ' + (kms.history.length + 1) + ' | ' + toName + ' | ' + dateStart + ' | - | 신규 인수 |\n';
-  } else {
-    doc += '| 구분 | 성명 | 부서 | 연락처 |\n|------|------|------|--------|\n';
-    doc += '| 인계자 | ' + fromName + ' | ' + (dept || '-') + ' | (직접 기재) |\n';
-    doc += '| 인수자 | ' + toName + ' | - | (직접 기재) |\n';
-  }
-  doc += '\n---\n\n';
+  // 2. KMS 최신 업무 내용 (HTML 원본 그대로)
+  doc += '## 2. 업무 내용 (KMS 최신 기준)\n\n';
+  doc += '__KMS_HTML__';
+  doc += '\n\n---\n\n';
 
-  // 3. 업무 목록 (KMS에서 실시간)
-  doc += '## 3. 업무 목록\n\n';
-  if (kms.tasks.length > 0) {
-    doc += '| 업무 ID | 업무명 | 업무 유형 | 주기 |\n|---------|--------|-----------|------|\n';
-    kms.tasks.forEach(t => {
-      doc += '| ' + t.id + ' | ' + t.name + ' | ' + t.type + ' | ' + t.period + ' |\n';
-    });
-  } else {
-    doc += '(KMS에서 업무 목록을 가져오지 못했습니다)\n';
-  }
-  doc += '\n---\n\n';
-
-  // 4. 업무 상세 (KMS에서 실시간)
-  doc += '## 4. 업무 상세\n\n';
-  if (kms.details.length > 0) {
-    kms.details.forEach(d => {
-      doc += '#### ' + d.title + '\n\n';
-      if (d.rows.length > 0) {
-        const headers = d.rows[0];
-        doc += '| ' + headers.join(' | ') + ' |\n';
-        doc += '|' + headers.map(() => '------|').join('') + '\n';
-        d.rows.slice(1).forEach(row => {
-          doc += '| ' + row.join(' | ') + ' |\n';
-        });
-      }
-      doc += '\n';
-    });
-  } else {
-    doc += '(KMS에서 업무 상세를 가져오지 못했습니다)\n';
-  }
-  doc += '\n---\n\n';
-
-  // 5. 특이사항 (KMS에서 실시간)
-  doc += '## 5. 특이사항 및 노하우\n\n';
-  if (kms.notes.length > 0 && kms.notes.some(n => n.content.trim())) {
-    doc += '| 날짜 | 업무 ID | 내용 | 작성자 |\n|------|---------|------|--------|\n';
-    kms.notes.forEach(n => {
-      if (n.content.trim()) {
-        doc += '| ' + n.date + ' | ' + n.taskId + ' | ' + n.content + ' | ' + n.author + ' |\n';
-      }
-    });
-  } else {
-    doc += '(인계자가 직접 기재해주세요)\n';
-  }
-  doc += '\n---\n\n';
-
-  // 6. 참고 문서
-  doc += '## 6. 참고 문서\n\n';
+  // 3. 참고 문서
+  doc += '## 3. 참고 문서\n\n';
   doc += '| 구분 | 링크 |\n|------|------|\n';
   if (hasSec)  doc += '| 정보보호 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407307427 |\n';
   if (hasSafe) doc += '| 산업안전보건 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407471178 |\n';
   doc += '\n---\n\n';
   doc += '*본 문서는 KT DS 업무 인수인계 자동화 시스템에 의해 생성되었습니다. (' + today + ')*';
 
-  return doc;
+  return { doc, kmsHtml };
 }
 
 // ── 마크다운 → HTML ──────────────────────────────
