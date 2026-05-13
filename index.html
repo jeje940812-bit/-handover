@@ -570,11 +570,77 @@ function htmlToText(html) {
 
 
 
+// ── KMS 데이터 파싱 ──────────────────────────────
+function parseKmsData(kmsText) {
+  if (!kmsText) return { tasks: [], details: [], history: [], notes: [] };
+
+  const lines  = kmsText.split('\n');
+  const tasks  = [];   // 업무 목록
+  const details = [];  // 업무 상세
+  const history = [];  // 담당자 히스토리
+  const notes  = [];   // 특이사항
+
+  let section = '';
+  let currentTask = null;
+  let currentTable = [];
+  let inTable = false;
+
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+
+    // 섹션 감지
+    if (t.includes('담당자 히스토리')) { section = 'history'; continue; }
+    if (t.includes('업무 목록'))       { section = 'tasks';   continue; }
+    if (t.includes('업무 상세'))       { section = 'details'; continue; }
+    if (t.includes('특이사항'))        { section = 'notes';   continue; }
+    if (t.includes('업무종료 점검표') || t.includes('참고 문서')) { section = ''; continue; }
+
+    // 테이블 행 파싱
+    if (t.startsWith('|') && t.endsWith('|')) {
+      const cells = t.slice(1, -1).split('|').map(c => c.trim());
+      if (cells.some(c => /^[-:]+$/.test(c))) continue; // 구분선 스킵
+
+      if (section === 'history') {
+        if (!cells[0].includes('순번') && cells.length >= 4) {
+          history.push({ num: cells[0], name: cells[1], startDate: cells[2], endDate: cells[3], note: cells[4] || '' });
+        }
+      } else if (section === 'tasks') {
+        if (!cells[0].includes('업무 ID') && cells.length >= 3) {
+          tasks.push({ id: cells[0], name: cells[1], type: cells[2], period: cells[3] || '' });
+        }
+      } else if (section === 'notes') {
+        if (!cells[0].includes('날짜') && cells.length >= 3) {
+          notes.push({ date: cells[0], taskId: cells[1], content: cells[2], author: cells[3] || '' });
+        }
+      }
+    }
+
+    // 업무 상세 헤딩 감지 (IS-xxx, SH-xxx)
+    if (section === 'details' && /^[A-Z]{2}-\d{3}/.test(t.replace(/^#+\s*/, ''))) {
+      if (currentTask) details.push(currentTask);
+      currentTask = { id: t.replace(/^#+\s*/, '').split('.')[0].trim(), title: t.replace(/^#+\s*/, ''), rows: [] };
+    } else if (section === 'details' && currentTask && t.startsWith('|') && t.endsWith('|')) {
+      const cells = t.slice(1, -1).split('|').map(c => c.trim());
+      if (!cells.some(c => /^[-:]+$/.test(c))) {
+        currentTask.rows.push(cells);
+      }
+    }
+  }
+  if (currentTask) details.push(currentTask);
+
+  return { tasks, details, history, notes };
+}
+
 // ── 템플릿 생성 ──────────────────────────────────
 function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, typeLabel, selected, kmsContent }) {
   const today   = new Date().toLocaleDateString('ko-KR');
   const hasSec  = selected.has('sec');
   const hasSafe = selected.has('safe');
+
+  // KMS 데이터 파싱
+  const kms = parseKmsData(kmsContent);
+
   let doc = '';
 
   // 1. 인수인계 개요
@@ -587,43 +653,70 @@ function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, type
   doc += '| 인계 사유 | ' + (reason || '-') + ' |\n';
   doc += '| 대상 업무 | ' + typeLabel + ' |\n\n---\n\n';
 
-  // 2. 업무 담당자 정보
-  doc += '## 2. 업무 담당자 정보\n\n';
-  doc += '| 구분 | 성명 | 부서 | 연락처 |\n|------|------|------|--------|\n';
-  doc += '| 인계자 | ' + fromName + ' | ' + (dept || '-') + ' | (직접 기재) |\n';
-  doc += '| 인수자 | ' + toName + ' | - | (직접 기재) |\n\n---\n\n';
-
-  // 3. KMS 실시간 업무 내용 (API에서 가져온 최신 내용)
-  if (kmsContent) {
-    doc += '## 3. 업무 내용 (KMS 최신 기준)\n\n';
-    doc += kmsContent;
-    doc += '\n\n---\n\n';
+  // 2. 담당자 히스토리 (KMS에서 실시간)
+  doc += '## 2. 담당자 히스토리\n\n';
+  if (kms.history.length > 0) {
+    doc += '| 순번 | 담당자 | 인수일 | 인계일 | 비고 |\n|------|--------|--------|--------|------|\n';
+    kms.history.forEach(h => {
+      doc += '| ' + h.num + ' | ' + h.name + ' | ' + h.startDate + ' | ' + h.endDate + ' | ' + h.note + ' |\n';
+    });
+    // 새 인수자 행 추가
+    doc += '| ' + (kms.history.length + 1) + ' | ' + toName + ' | ' + dateStart + ' | - | 신규 인수 |\n';
   } else {
-    // KMS 연동 실패 시 기본 템플릿
-    if (hasSec) {
-      doc += '## 3. 정보보호 업무 목록\n\n';
-      doc += '| 업무 ID | 업무명 | 주기 |\n|---------|--------|------|\n';
-      doc += '| IS-001 | KT/KTC 협력사 정보보호 관리 및 응대 | 수시 |\n';
-      doc += '| IS-002 | KT/KTC 협력사 Roll-Off 프로세스 안내 및 업무종료 점검표 관리 | 수시 |\n';
-      doc += '| IS-003 | 분기별 Security Clean Day 시행 안내 및 확인 | 분기 1회 |\n';
-      doc += '| IS-004 | 협력사 ZTNA 신청 가이드 안내 | 수시 |\n';
-      doc += '| IS-005 | 협력사 FTC 파일 결재 승인 | 수시 |\n';
-      doc += '| IS-006 | 인수인계 담당자 변경 절차 | 인수인계 시 |\n\n---\n\n';
-    }
-    if (hasSafe) {
-      doc += '## ' + (hasSec ? '4' : '3') + '. 산업안전보건 업무 목록\n\n';
-      doc += '| 업무 ID | 업무명 | 주기 |\n|---------|--------|------|\n';
-      doc += '| SH-001 | 순회점검 일지 작성 및 등록 | 매주 |\n';
-      doc += '| SH-002 | ITO/MA 상면 합동안전보건점검 | 분기 1회 |\n';
-      doc += '| SH-003 | 분당본사타워 월 유료주차 안내 | 매월 |\n\n---\n\n';
-    }
+    doc += '| 구분 | 성명 | 부서 | 연락처 |\n|------|------|------|--------|\n';
+    doc += '| 인계자 | ' + fromName + ' | ' + (dept || '-') + ' | (직접 기재) |\n';
+    doc += '| 인수자 | ' + toName + ' | - | (직접 기재) |\n';
   }
+  doc += '\n---\n\n';
 
-  // 4. 특이사항
-  doc += '## 4. 특이사항 및 주의사항\n\n(인계자가 직접 기재해주세요)\n\n---\n\n';
+  // 3. 업무 목록 (KMS에서 실시간)
+  doc += '## 3. 업무 목록\n\n';
+  if (kms.tasks.length > 0) {
+    doc += '| 업무 ID | 업무명 | 업무 유형 | 주기 |\n|---------|--------|-----------|------|\n';
+    kms.tasks.forEach(t => {
+      doc += '| ' + t.id + ' | ' + t.name + ' | ' + t.type + ' | ' + t.period + ' |\n';
+    });
+  } else {
+    doc += '(KMS에서 업무 목록을 가져오지 못했습니다)\n';
+  }
+  doc += '\n---\n\n';
 
-  // 5. 참고 문서
-  doc += '## 5. 참고 문서\n\n';
+  // 4. 업무 상세 (KMS에서 실시간)
+  doc += '## 4. 업무 상세\n\n';
+  if (kms.details.length > 0) {
+    kms.details.forEach(d => {
+      doc += '#### ' + d.title + '\n\n';
+      if (d.rows.length > 0) {
+        const headers = d.rows[0];
+        doc += '| ' + headers.join(' | ') + ' |\n';
+        doc += '|' + headers.map(() => '------|').join('') + '\n';
+        d.rows.slice(1).forEach(row => {
+          doc += '| ' + row.join(' | ') + ' |\n';
+        });
+      }
+      doc += '\n';
+    });
+  } else {
+    doc += '(KMS에서 업무 상세를 가져오지 못했습니다)\n';
+  }
+  doc += '\n---\n\n';
+
+  // 5. 특이사항 (KMS에서 실시간)
+  doc += '## 5. 특이사항 및 노하우\n\n';
+  if (kms.notes.length > 0 && kms.notes.some(n => n.content.trim())) {
+    doc += '| 날짜 | 업무 ID | 내용 | 작성자 |\n|------|---------|------|--------|\n';
+    kms.notes.forEach(n => {
+      if (n.content.trim()) {
+        doc += '| ' + n.date + ' | ' + n.taskId + ' | ' + n.content + ' | ' + n.author + ' |\n';
+      }
+    });
+  } else {
+    doc += '(인계자가 직접 기재해주세요)\n';
+  }
+  doc += '\n---\n\n';
+
+  // 6. 참고 문서
+  doc += '## 6. 참고 문서\n\n';
   doc += '| 구분 | 링크 |\n|------|------|\n';
   if (hasSec)  doc += '| 정보보호 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407307427 |\n';
   if (hasSafe) doc += '| 산업안전보건 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407471178 |\n';
