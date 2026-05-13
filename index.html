@@ -290,8 +290,22 @@
   .kms-table th { background: var(--bg); border: 1px solid var(--border); padding: .45rem .7rem; font-weight: 600; text-align: left; }
   .kms-table td { border: 1px solid var(--border); padding: .45rem .7rem; vertical-align: top; }
   .kms-table tr:nth-child(even) td { background: #fafbfc; }
+  .kms-table td ul, .kms-table td ol { padding-left: 1.2rem; margin: 0; list-style-position: inside; }
+  .kms-table td li { margin: .15rem 0; }
+  .kms-table td p { margin: .15rem 0; }
   .result-body blockquote { background: #f8f9ff; border-left: 3px solid var(--accent); padding: .75rem 1rem; margin: .5rem 0; font-size: 13px; color: var(--sub); }
   .result-body h3 { font-size: 14px; font-weight: 700; color: var(--accent); margin: 1rem 0 .5rem; }
+
+  /* 인쇄 스타일 */
+  @media print {
+    header, .tabs, .card:not(#print-area), .btns, .result-bar,
+    .btn, .toast, .loading { display: none !important; }
+    body { background: #fff; padding: 0; }
+    .result-body { max-height: none; overflow: visible; padding: 0; }
+    .result { display: block !important; border: none; box-shadow: none; }
+    .kms-table { font-size: 11px; }
+    h2 { font-size: 14px; }
+  }
 
   @media (max-width: 600px) {
     .grid2, .type-grid { grid-template-columns: 1fr; }
@@ -384,9 +398,8 @@
   <div class="result" id="result">
     <div class="result-bar">
       <span class="result-label">📄 생성된 인수인계서</span>
-      <button class="btn btn-ghost" onclick="copyDoc()" style="font-size:12px;padding:.4rem .9rem">📋 복사</button>
-      <button class="btn btn-ghost" onclick="window.print()" style="font-size:12px;padding:.4rem .9rem">🖨 인쇄</button>
-      <button class="btn btn-primary" onclick="saveKms()" style="font-size:12px;padding:.4rem .9rem">💾 KMS 저장</button>
+      <button class="btn btn-ghost" onclick="printDoc()" style="font-size:12px;padding:.4rem .9rem">🖨 인쇄</button>
+      <button class="btn btn-primary" onclick="savePdf()" style="font-size:12px;padding:.4rem .9rem">📥 PDF 저장</button>
     </div>
     <div class="result-body" id="result-body"></div>
   </div>
@@ -629,16 +642,10 @@ function makeTemplate({ fromName, toName, dept, dateStart, dateEnd, reason, type
   doc += '| 대상 업무 | ' + typeLabel + ' |\n\n---\n\n';
 
   // 2. KMS 최신 업무 내용 (HTML 원본 그대로)
-  doc += '## 2. 업무 내용 (KMS 최신 기준)\n\n';
+  doc += '## 2. 업무 내용 (KMS 최신 기준 · ' + today + ')\n\n';
   doc += '__KMS_HTML__';
   doc += '\n\n---\n\n';
 
-  // 3. 참고 문서
-  doc += '## 3. 참고 문서\n\n';
-  doc += '| 구분 | 링크 |\n|------|------|\n';
-  if (hasSec)  doc += '| 정보보호 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407307427 |\n';
-  if (hasSafe) doc += '| 산업안전보건 업무 운영 노트 | https://ktds-kms.atlassian.net/wiki/spaces/InfraManagement/pages/407471178 |\n';
-  doc += '\n---\n\n';
   doc += '*본 문서는 KT DS 업무 인수인계 자동화 시스템에 의해 생성되었습니다. (' + today + ')*';
 
   return { doc, kmsHtml };
@@ -679,48 +686,16 @@ function mdToHtml(md) {
   return html;
 }
 
-// ── 복사 / KMS 저장 ──────────────────────────────
-function copyDoc() {
-  navigator.clipboard.writeText(docText)
-    .then(() => toast('클립보드에 복사됐습니다', 'ok'))
-    .catch(() => toast('복사 실패', 'err'));
+// ── 인쇄 / PDF 저장 ─────────────────────────────
+function printDoc() {
+  window.print();
 }
 
-async function saveKms() {
+function savePdf() {
   if (!docText) { toast('먼저 인수인계서를 생성해주세요', 'err'); return; }
-  const fromName = document.getElementById('from-name').value.trim();
-  const toName   = document.getElementById('to-name').value.trim();
-  const today    = new Date().toLocaleDateString('ko-KR');
-  const title    = '[인수인계] ' + fromName + ' → ' + toName + ' (' + today + ')';
-  toast('KMS에 저장 중...', '');
-  try {
-    const auth = getAuth();
-    if (!auth) return;
-    const res  = await fetch(CONF_LEGACY + '/content', {
-      method : 'POST',
-      headers: {
-        'Authorization': 'Basic ' + auth,
-        'Content-Type' : 'application/json',
-        'Accept'       : 'application/json',
-      },
-      body: JSON.stringify({
-        type    : 'page',
-        title,
-        ancestors: [{ id: '406653051' }],
-        body    : {
-          storage: {
-            value          : docText.replace(/\n/g, '<br/>'),
-            representation : 'storage',
-          }
-        }
-      }),
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    toast('KMS 저장 완료! — ' + title, 'ok');
-  } catch(e) {
-    toast('KMS 저장 실패: ' + e.message, 'err');
-  }
+  // 브라우저 인쇄 기능으로 PDF 저장 (Ctrl+P → PDF로 저장)
+  toast('인쇄 창에서 "PDF로 저장" 선택하세요', 'ok');
+  setTimeout(() => window.print(), 500);
 }
 
 // ── 연결 테스트 ──────────────────────────────────
